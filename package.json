@@ -1,0 +1,8 @@
+{
+  "engines": {
+    "vscode": "^1.37.1"
+  },
+  "name": "yolk",
+  "publisher": "taylorfausak",
+  "version": "0.0.0"
+}
