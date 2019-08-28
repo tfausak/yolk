@@ -1,4 +1,19 @@
 {
+  "//": "https://code.visualstudio.com/api/references/extension-manifest",
+  "contributes": {
+    "languages": [
+      {
+        "aliases": [
+          "Haskell"
+        ],
+        "configuration": "languages/haskell-language-configuration.json",
+        "extensions": [
+          ".hs"
+        ],
+        "id": "haskell"
+      }
+    ]
+  },
   "engines": {
     "vscode": "^1.37.1"
   },
