@@ -1,6 +1,13 @@
 {
   "//": "https://code.visualstudio.com/api/references/extension-manifest",
   "contributes": {
+    "grammars": [
+      {
+        "language": "haskell",
+        "path": "grammars/haskell.tmLanguage.json",
+        "scopeName": "source.haskell"
+      }
+    ],
     "languages": [
       {
         "aliases": [

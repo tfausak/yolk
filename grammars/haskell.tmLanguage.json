@@ -1,0 +1,35 @@
+{
+  "//": "https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide",
+  "patterns": [
+    {
+      "include": "#comment"
+    }
+  ],
+  "repository": {
+    "blockComment": {
+      "begin": "{-",
+      "end": "-}",
+      "name": "comment.block.haskell",
+      "patterns": [
+        {
+          "include": "#blockComment"
+        }
+      ]
+    },
+    "comment": {
+      "patterns": [
+        {
+          "include": "#blockComment"
+        },
+        {
+          "include": "#lineComment"
+        }
+      ]
+    },
+    "lineComment": {
+      "match": "--.*",
+      "name": "comment.line.double-dash.haskell"
+    }
+  },
+  "scopeName": "source.haskell"
+}
