@@ -95,13 +95,8 @@
       ]
     },
     "reservedIdentifier": {
-      "captures": {
-        "1": {
-          "name": "keyword.control.haskell"
-        }
-      },
-      "match": "\\b(?:(case|do|else|if|of|then)|class|data|default|deriving|foreign|import|in(?:fix[lr]?|stance)?|let|module|newtype|type|where|_)\\b",
-      "name": "keyword.haskell"
+      "match": "\\b(?:case|class|data|default|deriving|do|else|foreign|if|import|in(?:fix[lr]?|stance)?|let|module|newtype|of|then|type|where|_)\\b",
+      "name": "keyword.control.haskell"
     },
     "reservedOperator": {
       "match": "[.][.]|::?|=|\\\\|[|]|<-|->|@|~|=>",
