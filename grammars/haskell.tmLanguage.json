@@ -6,6 +6,9 @@
     },
     {
       "include": "#comment"
+    },
+    {
+      "include": "#string"
     }
   ],
   "repository": {
@@ -41,6 +44,27 @@
     "lineComment": {
       "match": "--.*",
       "name": "comment.line.double-dash.haskell"
+    },
+    "string": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.haskell",
+      "patterns": [
+        {
+          "include": "#stringCharacter"
+        }
+      ]
+    },
+    "stringCharacter": {
+      "captures": {
+        "1": {
+          "name": "comment.block.haskell"
+        },
+        "2": {
+          "name": "constant.character.escape.haskell"
+        }
+      },
+      "match": "(^[ \\t]*\\\\|\\\\[ \\t]+\\\\|\\\\[ \\t]*$)|[^\"\\\\\\n\\r]|(\\\\(?:[abfnrtv\\\\\"'&]|\\^[A-Z@\\[\\\\\\]\\^_]|(?:NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE|DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS|US|SP|DEL)|[0-9]+|o[0-7]+|x[0-9A-Fa-f]+))"
     }
   },
   "scopeName": "source.haskell"
