@@ -2,6 +2,9 @@
   "//": "https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide",
   "patterns": [
     {
+      "include": "#pragma"
+    },
+    {
       "include": "#character"
     },
     {
@@ -54,6 +57,11 @@
     "number": {
       "match": "\\b(?:[0-9]+[eE][+-]?[0-9]+|[0-9]+[.][0-9]+(?:[eE][+-]?[0-9]+)?|0[oO][0-7]+|0[xX][0-9A-Fa-f]+|[0-9]+)\\b",
       "name": "constant.numeric.haskell"
+    },
+    "pragma": {
+      "begin": "{-#",
+      "end": "#-}",
+      "name": "keyword.other.haskell"
     },
     "reserved": {
       "patterns": [
