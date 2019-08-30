@@ -8,6 +8,9 @@
       "include": "#comment"
     },
     {
+      "include": "#number"
+    },
+    {
       "include": "#string"
     }
   ],
@@ -44,6 +47,10 @@
     "lineComment": {
       "match": "--.*",
       "name": "comment.line.double-dash.haskell"
+    },
+    "number": {
+      "match": "[0-9]+[eE][+-]?[0-9]+|[0-9]+[.][0-9]+(?:[eE][+-]?[0-9]+)?|0[oO][0-7]+|0[xX][0-9A-Fa-f]+|[0-9]+",
+      "name": "constant.numeric.haskell"
     },
     "string": {
       "begin": "\"",
