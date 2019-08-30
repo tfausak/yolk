@@ -11,6 +11,9 @@
       "include": "#number"
     },
     {
+      "include": "#reserved"
+    },
+    {
       "include": "#string"
     }
   ],
@@ -51,6 +54,24 @@
     "number": {
       "match": "[0-9]+[eE][+-]?[0-9]+|[0-9]+[.][0-9]+(?:[eE][+-]?[0-9]+)?|0[oO][0-7]+|0[xX][0-9A-Fa-f]+|[0-9]+",
       "name": "constant.numeric.haskell"
+    },
+    "reserved": {
+      "patterns": [
+        {
+          "include": "#reservedIdentifier"
+        },
+        {
+          "include": "#reservedOperator"
+        }
+      ]
+    },
+    "reservedIdentifier": {
+      "match": "case|class|data|default|deriving|do|else|foreign|if|import|in(?:fix[lr]?|stance)?|let|module|newtype|of|then|type|where|_",
+      "name": "keyword.haskell"
+    },
+    "reservedOperator": {
+      "match": "[.][.]|::?|=|\\\\|[|]|<-|->|@|~|=>",
+      "name": "keyword.operator.haskell"
     },
     "string": {
       "begin": "\"",
