@@ -20,6 +20,12 @@
       "include": "#identifier"
     },
     {
+      "include": "#operator"
+    },
+    {
+      "include": "#special"
+    },
+    {
       "include": "#string"
     }
   ],
@@ -54,7 +60,7 @@
       ]
     },
     "commentLine": {
-      "match": "--.*",
+      "match": "(?<![!#$%&*+./<=>?@\\\\\\^|~:])-{2,}(?![!#$%&*+./<=>?@\\\\\\^|~:]).*",
       "name": "comment.line.double-dash.haskell"
     },
     "identifier": {
@@ -79,6 +85,10 @@
       "match": "\\b(?:[0-9]+[eE][+-]?[0-9]+|[0-9]+[.][0-9]+(?:[eE][+-]?[0-9]+)?|0[oO][0-7]+|0[xX][0-9A-Fa-f]+|[0-9]+)\\b",
       "name": "constant.numeric.haskell"
     },
+    "operator": {
+      "match": "[!#$%&*+./<=>?@\\\\\\^|\\-~:]",
+      "name": "keyword.operator.haskell"
+    },
     "pragma": {
       "begin": "{-#",
       "end": "#-}",
@@ -100,6 +110,10 @@
     },
     "reservedOperator": {
       "match": "[.][.]|::?|=|\\\\|[|]|<-|->|@|~|=>",
+      "name": "keyword.operator.haskell"
+    },
+    "special": {
+      "match": "[(),;\\[\\]`{}]",
       "name": "keyword.operator.haskell"
     },
     "string": {
