@@ -2,6 +2,9 @@
   "//": "https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide",
   "patterns": [
     {
+      "include": "#character"
+    },
+    {
       "include": "#comment"
     }
   ],
@@ -15,6 +18,10 @@
           "include": "#blockComment"
         }
       ]
+    },
+    "character": {
+      "match": "'.'",
+      "name": "constant.character.haskell"
     },
     "comment": {
       "patterns": [
