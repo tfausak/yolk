@@ -66,7 +66,12 @@
       ]
     },
     "reservedIdentifier": {
-      "match": "case|class|data|default|deriving|do|else|foreign|if|import|in(?:fix[lr]?|stance)?|let|module|newtype|of|then|type|where|_",
+      "captures": {
+        "1": {
+          "name": "keyword.control.haskell"
+        }
+      },
+      "match": "(case|do|else|if|of|then)|class|data|default|deriving|foreign|import|in(?:fix[lr]?|stance)?|let|module|newtype|type|where|_",
       "name": "keyword.haskell"
     },
     "reservedOperator": {
