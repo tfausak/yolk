@@ -21,16 +21,6 @@
     }
   ],
   "repository": {
-    "blockComment": {
-      "begin": "{-",
-      "end": "-}",
-      "name": "comment.block.haskell",
-      "patterns": [
-        {
-          "include": "#blockComment"
-        }
-      ]
-    },
     "character": {
       "captures": {
         "1": {
@@ -43,14 +33,24 @@
     "comment": {
       "patterns": [
         {
-          "include": "#blockComment"
+          "include": "#commentBlock"
         },
         {
-          "include": "#lineComment"
+          "include": "#commentLine"
         }
       ]
     },
-    "lineComment": {
+    "commentBlock": {
+      "begin": "{-",
+      "end": "-}",
+      "name": "comment.block.haskell",
+      "patterns": [
+        {
+          "include": "#commentBlock"
+        }
+      ]
+    },
+    "commentLine": {
       "match": "--.*",
       "name": "comment.line.double-dash.haskell"
     },
