@@ -17,6 +17,9 @@
       "include": "#reserved"
     },
     {
+      "include": "#identifier"
+    },
+    {
       "include": "#string"
     }
   ],
@@ -53,6 +56,24 @@
     "commentLine": {
       "match": "--.*",
       "name": "comment.line.double-dash.haskell"
+    },
+    "identifier": {
+      "patterns": [
+        {
+          "include": "#identifierConstructor"
+        },
+        {
+          "include": "#identifierVariable"
+        }
+      ]
+    },
+    "identifierConstructor": {
+      "match": "\\b[A-Z][a-z_A-Z0-9']*",
+      "name": "storage.type.haskell"
+    },
+    "identifierVariable": {
+      "match": "\\b[a-z_][a-z_A-Z0-9']*",
+      "name": "variable.haskell"
     },
     "number": {
       "match": "\\b(?:[0-9]+[eE][+-]?[0-9]+|[0-9]+[.][0-9]+(?:[eE][+-]?[0-9]+)?|0[oO][0-7]+|0[xX][0-9A-Fa-f]+|[0-9]+)\\b",
