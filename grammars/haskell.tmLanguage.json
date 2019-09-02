@@ -20,12 +20,6 @@
       "include": "#identifier"
     },
     {
-      "include": "#operator"
-    },
-    {
-      "include": "#special"
-    },
-    {
       "include": "#string"
     }
   ],
@@ -67,9 +61,6 @@
       "patterns": [
         {
           "include": "#identifierConstructor"
-        },
-        {
-          "include": "#identifierVariable"
         }
       ]
     },
@@ -77,17 +68,9 @@
       "match": "\\b[A-Z][a-z_A-Z0-9']*",
       "name": "storage.type.haskell"
     },
-    "identifierVariable": {
-      "match": "\\b[a-z_][a-z_A-Z0-9']*",
-      "name": "variable.haskell"
-    },
     "number": {
       "match": "\\b(?:[0-9]+[eE][+-]?[0-9]+|[0-9]+[.][0-9]+(?:[eE][+-]?[0-9]+)?|0[oO][0-7]+|0[xX][0-9A-Fa-f]+|[0-9]+)\\b",
       "name": "constant.numeric.haskell"
-    },
-    "operator": {
-      "match": "[!#$%&*+./<=>?@\\\\\\^|\\-~:]",
-      "name": "keyword.operator.haskell"
     },
     "pragma": {
       "begin": "{-#",
@@ -95,26 +78,8 @@
       "name": "keyword.other.haskell"
     },
     "reserved": {
-      "patterns": [
-        {
-          "include": "#reservedIdentifier"
-        },
-        {
-          "include": "#reservedOperator"
-        }
-      ]
-    },
-    "reservedIdentifier": {
       "match": "\\b(?:case|class|data|default|deriving|do|else|foreign|if|import|in(?:fix[lr]?|stance)?|let|module|newtype|of|then|type|where|_)\\b",
       "name": "keyword.control.haskell"
-    },
-    "reservedOperator": {
-      "match": "[.][.]|::?|=|\\\\|[|]|<-|->|@|~|=>",
-      "name": "keyword.operator.haskell"
-    },
-    "special": {
-      "match": "[(),;\\[\\]`{}]",
-      "name": "keyword.operator.haskell"
     },
     "string": {
       "begin": "\"",
