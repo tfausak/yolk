@@ -7,7 +7,7 @@
     "grammars": [
       {
         "language": "haskell",
-        "path": "grammars/haskell.tmLanguage.json",
+        "path": "grammars/haskell-grammar.json",
         "scopeName": "source.haskell"
       }
     ],
