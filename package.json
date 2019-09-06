@@ -1,5 +1,8 @@
 {
   "//": "https://code.visualstudio.com/api/references/extension-manifest",
+  "categories": [
+    "Programming Languages"
+  ],
   "contributes": {
     "grammars": [
       {
@@ -21,13 +24,25 @@
       }
     ]
   },
+  "description": "A Haskell IDE.",
+  "displayName": "Yolk",
+  "homepage": "https://github.com/tfausak/yolk",
   "engines": {
     "vscode": "^1.38.0"
   },
+  "galleryBanner": {
+    "color": "#7400b3",
+    "theme": "dark"
+  },
+  "keywords": [
+    "haskell",
+    "ide"
+  ],
   "name": "yolk",
   "publisher": "taylorfausak",
   "repository": {
-    "url": "https://github.com/tfausak/yolk"
+    "type": "git",
+    "url": "https://github.com/tfausak/yolk.git"
   },
   "version": "0.0.0"
 }
