@@ -20,7 +20,8 @@ module.exports = {
         },
       ],
     };
-    new vscode.LanguageClient('Yolk', serverOptions, clientOptions).start();
+    const client = new vscode.LanguageClient('Yolk', serverOptions, clientOptions)
+    client.start();
   },
 
 };
