@@ -26,5 +26,8 @@
   },
   "name": "yolk",
   "publisher": "taylorfausak",
+  "repository": {
+    "url": "https://github.com/tfausak/yolk"
+  },
   "version": "0.0.0"
 }
