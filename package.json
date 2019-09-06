@@ -22,7 +22,7 @@
     ]
   },
   "engines": {
-    "vscode": "^1.37.1"
+    "vscode": "^1.38.0"
   },
   "name": "yolk",
   "publisher": "taylorfausak",
