@@ -53,7 +53,7 @@
   },
   "fixity declaration": {
     "body": [
-      "infix${1:direction} ${2:precedence} ${0:operator}"
+      "${1|infix,infixl,infixr|} ${2|0,1,2,3,4,5,6,7,8,9|} ${0:operator}"
     ],
     "prefix": [
       "infix"
@@ -61,7 +61,7 @@
   },
   "foreign declaration": {
     "body": [
-      "foreign ${1:import} ${2:ccall} \"${3:header}\" ${4:identifier} :: ${0:Type}"
+      "foreign ${1|import,export|} ${2:ccall} \"${3:header}\" ${4:identifier} :: ${0:Type}"
     ],
     "prefix": [
       "foreign"
@@ -94,7 +94,7 @@
   },
   "module declaration": {
     "body": [
-      "module ${1:Module} ( ${2:export} ) where",
+      "module ${1:Module} (${2:export}) where",
       "",
       "$0"
     ],
