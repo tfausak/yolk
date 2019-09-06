@@ -26,14 +26,15 @@
   },
   "description": "A Haskell IDE.",
   "displayName": "Yolk",
-  "homepage": "https://github.com/tfausak/yolk",
   "engines": {
     "vscode": "^1.38.0"
   },
   "galleryBanner": {
-    "color": "#7400b3",
+    "color": "#453A62",
     "theme": "dark"
   },
+  "homepage": "https://github.com/tfausak/yolk",
+  "icon": "images/yolk.png",
   "keywords": [
     "haskell",
     "ide"
