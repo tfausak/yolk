@@ -1,26 +1,97 @@
+'use strict';
+
 const childProcess = require('child_process');
 const vscode = require('vscode-languageserver');
 
 const connection = vscode.createConnection();
 
-const ghci = childProcess.spawn(
-  'stack',
-  [
-    '--resolver',
-    'ghc-8.8.1',
-    'exec',
-    '--',
-    'ghci',
-    '-ddump-json',
-  ]);
+// This should really use url.fileURLToPath, but VSCode uses Node 10.11.0 and
+// that function was added in 10.12.0.
+// <https://nodejs.org/docs/v10.12.0/api/url.html#url_url_fileurltopath_url>
+const uriToPath = (uri) => decodeURIComponent(uri)
+  .replace(/file:\/\/\/([a-z]):\//i, '$1:/');
 
-toSeverity = (severity) => {
+// diagnostic stuff //
+
+const files = {};
+
+const sendDiagnostics = () => {
+  Object.keys(files).forEach((file) => {
+    connection.sendDiagnostics({
+      diagnostics: Object.values(files[file].diagnostics),
+      uri: files[file].uri,
+    });
+  });
+};
+
+const initializeDiagnostics = (uri) => {
+  files[uriToPath(uri)] = {
+    diagnostics: {},
+    uri,
+  };
+  sendDiagnostics();
+};
+
+const toKey = (diagnostic) => {
+  return [
+    diagnostic.span.startLine,
+    diagnostic.span.startCol,
+    diagnostic.span.endLine,
+    diagnostic.span.endCol,
+    diagnostic.severity,
+    diagnostic.reason,
+    diagnostic.doc,
+  ].join(' ');
+};
+
+const toRange = (span) => {
+  return {
+    end: {
+      character: span.endCol - 1,
+      line: span.endLine - 1,
+    },
+    start: {
+      character: span.startCol - 1,
+      line: span.startLine - 1,
+    },
+  };
+};
+
+const toDiagnosticSeverity = (severity) => {
   switch (severity) {
     case 'SevError': return vscode.DiagnosticSeverity.Error;
     case 'SevWarning': return vscode.DiagnosticSeverity.Warning;
     default: return vscode.DiagnosticSeverity.Information;
   }
 };
+
+const addDiagnostic = (file, diagnostic) => {
+  files[file].diagnostics[toKey(diagnostic)] = {
+    code: diagnostic.reason,
+    message: diagnostic.doc,
+    range: toRange(diagnostic.span),
+    severity: toDiagnosticSeverity(diagnostic.severity),
+    source: 'ghc',
+  };
+  sendDiagnostics();
+};
+
+const clearDiagnostics = (file) => {
+  files[file].diagnostics = {};
+  sendDiagnostics();
+};
+
+// ghci stuff //
+
+const ghci = childProcess.spawn(
+  'stack',
+  [
+    'exec',
+    '--',
+    'ghc',
+    '--interactive',
+    '-ddump-json',
+  ]);
 
 let buffer = "";
 ghci.stdout.on('data', (data) => {
@@ -31,32 +102,10 @@ ghci.stdout.on('data', (data) => {
     buffer = buffer.substring(index + 1);
     try {
       const json = JSON.parse(line);
-      connection.console.info(JSON.stringify(json));
-      if (json.span) {
-        connection.sendDiagnostics({
-          diagnostics: [
-            {
-              code: json.reason,
-              message: json.doc,
-              range: {
-                end: {
-                  character: json.span.endCol,
-                  line: json.span.endLine - 1,
-                },
-                start: {
-                  character: json.span.startCol,
-                  line: json.span.startLine - 1,
-                },
-              },
-              severity: toSeverity(json.severity),
-              source: 'ghc',
-            }
-          ],
-          uri: pathToUri(json.span.file),
-        });
-      }
+      addDiagnostic(json.span.file, json);
     } catch (err) {
       connection.console.warn(line);
+      console.error(err);
     }
   }
 });
@@ -65,24 +114,33 @@ ghci.stderr.on('data', (data) => {
   connection.console.warn(data.toString().trimEnd());
 });
 
-ghci.on('close', (code) => {
-  connection.console.warn(`ghci closed with code ${code}`);
+ghci.on('close', (code, signal) => {
+  connection.console.error(`ghci closed with code ${code} and signal ${signal}`);
 });
 
 [
-  ':set prompt ""',
-  ':set prompt-cont ""',
-  ':set +c',
-].forEach((command) => {
-  ghci.stdin.write(`${command}\n`, (err) => {
+  'prompt ""',
+  'prompt-cont ""',
+  '+c',
+].forEach((option) => {
+  ghci.stdin.write(`:set ${option}\n`, (err) => {
     if (err) {
       throw err;
     }
   })
 });
 
+const loadUri = (uri) => {
+  ghci.stdin.write(`:load ${uriToPath(uri)}\n`, (err) => {
+    if (err) {
+      throw err;
+    }
+  });
+};
+
+// language server stuff //
+
 connection.onInitialize(() => {
-  connection.console.info('onInitialize');
   return {
     capabilities: {
       textDocumentSync: {
@@ -93,30 +151,26 @@ connection.onInitialize(() => {
   };
 });
 
-// This should really use url.fileURLToPath, but VSCode uses Node 10.11.0 and
-// that function was added in 10.12.0.
-// <https://nodejs.org/docs/v10.12.0/api/url.html#url_url_fileurltopath_url>
-const uriToPath = (uri) => decodeURIComponent(uri)
-  .replace(/file:\/\/\/([a-z]):\//i, '$1:/');
-
-const pathToUri = (path) => `file:///${encodeURIComponent(path)}`;
-
 connection.onDidOpenTextDocument((params) => {
-  const file = uriToPath(params.textDocument.uri);
-  connection.console.info(`onDidOpenTextDocument ${file}`);
-  ghci.stdin.write(`:load ${file}\n`, (err) => { if (err) { throw err; } });
+  const uri = params.textDocument.uri;
+  initializeDiagnostics(uri);
+  loadUri(uri);
 });
 
 connection.onDidSaveTextDocument((params) => {
-  const file = uriToPath(params.textDocument.uri);
-  connection.console.info(`onDidSaveTextDocument ${file}`);
-  connection.sendDiagnostics({ diagnostics: [], uri: params.textDocument.uri });
-  ghci.stdin.write(`:load ${file}\n`, (err) => { if (err) { throw err; } });
+  const uri = params.textDocument.uri;
+  clearDiagnostics(uriToPath(uri));
+  loadUri(uri);
 });
 
 connection.onDidCloseTextDocument((params) => {
-  connection.console.info(`onDidCloseTextDocument ${params.textDocument.uri}`);
+  clearDiagnostics(uriToPath(params.textDocument.uri))
 });
 
 connection.listen();
-connection.console.error('Hello from Yolk!');
+
+connection.console.error(
+  'Hello from Yolk! ' +
+  'Nothing is wrong. ' +
+  'Logging an error message makes VSCode show the output. ' +
+  'That\'s useful during development.');
