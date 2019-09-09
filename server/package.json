@@ -2,5 +2,11 @@
   "dependencies": {
     "vscode-languageserver": "^5.2.1"
   },
-  "private": true
+  "devDependencies": {
+    "eslint": "^6.3.0"
+  },
+  "private": true,
+  "scripts": {
+    "eslint": "eslint"
+  }
 }

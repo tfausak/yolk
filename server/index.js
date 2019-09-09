@@ -32,30 +32,26 @@ const initializeDiagnostics = (uri) => {
   sendDiagnostics();
 };
 
-const toKey = (diagnostic) => {
-  return [
-    diagnostic.span.startLine,
-    diagnostic.span.startCol,
-    diagnostic.span.endLine,
-    diagnostic.span.endCol,
-    diagnostic.severity,
-    diagnostic.reason,
-    diagnostic.doc,
-  ].join(' ');
-};
+const toKey = (diagnostic) => [
+  diagnostic.span.startLine,
+  diagnostic.span.startCol,
+  diagnostic.span.endLine,
+  diagnostic.span.endCol,
+  diagnostic.severity,
+  diagnostic.reason,
+  diagnostic.doc,
+].join(' ');
 
-const toRange = (span) => {
-  return {
-    end: {
-      character: span.endCol - 1,
-      line: span.endLine - 1,
-    },
-    start: {
-      character: span.startCol - 1,
-      line: span.startLine - 1,
-    },
-  };
-};
+const toRange = (span) => ({
+  end: {
+    character: span.endCol - 1,
+    line: span.endLine - 1,
+  },
+  start: {
+    character: span.startCol - 1,
+    line: span.startLine - 1,
+  },
+});
 
 const toDiagnosticSeverity = (severity) => {
   switch (severity) {
@@ -91,9 +87,10 @@ const ghci = childProcess.spawn(
     'ghc',
     '--interactive',
     '-ddump-json',
-  ]);
+  ]
+);
 
-let buffer = "";
+let buffer = '';
 ghci.stdout.on('data', (data) => {
   buffer += data.toString();
   const index = buffer.indexOf('\n');
@@ -110,67 +107,61 @@ ghci.stdout.on('data', (data) => {
   }
 });
 
-ghci.stderr.on('data', (data) => {
-  connection.console.warn(data.toString().trimEnd());
-});
+ghci.stderr.on('data', (data) =>
+  connection.console.warn(data.toString().trimEnd()));
 
-ghci.on('close', (code, signal) => {
-  connection.console.error(`ghci closed with code ${code} and signal ${signal}`);
-});
+ghci.on('close', (code, signal) =>
+  connection.console.error(`ghci close ${code} ${signal}`));
 
 [
   'prompt ""',
   'prompt-cont ""',
   '+c',
-].forEach((option) => {
+].forEach((option) =>
   ghci.stdin.write(`:set ${option}\n`, (err) => {
     if (err) {
       throw err;
     }
-  })
-});
+  }));
 
-const loadUri = (uri) => {
+const loadUri = (uri) =>
   ghci.stdin.write(`:load ${uriToPath(uri)}\n`, (err) => {
     if (err) {
       throw err;
     }
   });
-};
 
 // language server stuff //
 
-connection.onInitialize(() => {
-  return {
-    capabilities: {
-      textDocumentSync: {
-        openClose: true,
-        save: true,
-      },
+connection.onInitialize(() => ({
+  capabilities: {
+    textDocumentSync: {
+      openClose: true,
+      save: true,
     },
-  };
-});
+  },
+}));
 
 connection.onDidOpenTextDocument((params) => {
-  const uri = params.textDocument.uri;
+  const { uri } = params.textDocument;
   initializeDiagnostics(uri);
   loadUri(uri);
 });
 
 connection.onDidSaveTextDocument((params) => {
-  const uri = params.textDocument.uri;
+  const { uri } = params.textDocument;
   clearDiagnostics(uriToPath(uri));
   loadUri(uri);
 });
 
-connection.onDidCloseTextDocument((params) => {
-  clearDiagnostics(uriToPath(params.textDocument.uri))
-});
+connection.onDidCloseTextDocument((params) =>
+  clearDiagnostics(uriToPath(params.textDocument.uri)));
 
 connection.listen();
 
-connection.console.error(
-  'Hello from Yolk! ' +
-  'Nothing is wrong. ' +
-  'Logging an error message makes VSCode show the output. ' +
-  'That\'s useful during development.');
+connection.console.error([
+  'Hello from Yolk!',
+  'Nothing is wrong.',
+  'Logging an error message makes VSCode show the output.',
+  'That\'s useful during development.',
+].join(' '));
