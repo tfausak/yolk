@@ -84,6 +84,14 @@
       "instance"
     ]
   },
+  "language pragma": {
+    "body": [
+      "{-# LANGUAGE ${0:extension} #-}"
+    ],
+    "prefix": [
+      "LANGUAGE"
+    ]
+  },
   "let expression": {
     "body": [
       "let ${1:pattern} = ${2:expression} in ${0:expression}"
