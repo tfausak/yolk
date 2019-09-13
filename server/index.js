@@ -79,7 +79,7 @@ const clearDiagnostics = (file) => {
 
 // get supported extensions
 
-let extensions = new Set();
+const extensions = new Set();
 
 const extProc = childProcess.spawn(
   'stack',
@@ -87,19 +87,19 @@ const extProc = childProcess.spawn(
     'exec',
     '--',
     'ghc',
-    '--supported-extensions'
+    '--supported-extensions',
   ]
 );
 
 let extBuf = '';
 extProc.stdout.on('data', (data) => {
   extBuf += data.toString();
-  while (true) {
+  for (;;) {
     const index = extBuf.indexOf('\n');
     if (index === -1) {
       break;
     }
-    extensions.add(extBuf.substring(0, index));
+    extensions.add(extBuf.substring(0, index - 1));
     extBuf = extBuf.substring(index + 1);
   }
 });
@@ -168,6 +168,9 @@ const loadUri = (uri) =>
 
 connection.onInitialize(() => ({
   capabilities: {
+    completionProvider: {
+      resolveProvider: true,
+    },
     textDocumentSync: {
       openClose: true,
       save: true,
@@ -189,6 +192,19 @@ connection.onDidSaveTextDocument((params) => {
 
 connection.onDidCloseTextDocument((params) =>
   clearDiagnostics(uriToPath(params.textDocument.uri)));
+
+connection.onCompletion((params, token) => {
+  console.log('onCompletion');
+  console.log(params);
+  console.log(token);
+  return Array.from(extensions).map((extension) => ({ label: extension }));
+});
+
+connection.onCompletionResolve((params, token) => {
+  console.log('onCompletionResolve');
+  console.log(params);
+  console.log(token);
+});
 
 connection.listen();
 

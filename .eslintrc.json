@@ -3,6 +3,9 @@
     "node": true
   },
   "extends": "eslint:all",
+  "globals": {
+    "Set": "readonly"
+  },
   "parserOptions": {
     "ecmaVersion": 6
   },
