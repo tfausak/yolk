@@ -77,6 +77,39 @@ const clearDiagnostics = (file) => {
   sendDiagnostics();
 };
 
+// get supported extensions
+
+let extensions = new Set();
+
+const extProc = childProcess.spawn(
+  'stack',
+  [
+    'exec',
+    '--',
+    'ghc',
+    '--supported-extensions'
+  ]
+);
+
+let extBuf = '';
+extProc.stdout.on('data', (data) => {
+  extBuf += data.toString();
+  while (true) {
+    const index = extBuf.indexOf('\n');
+    if (index === -1) {
+      break;
+    }
+    extensions.add(extBuf.substring(0, index));
+    extBuf = extBuf.substring(index + 1);
+  }
+});
+
+extProc.stderr.on('data', (data) =>
+  connection.console.warn(data.toString().trimEnd()));
+
+extProc.on('close', (code, signal) =>
+  connection.console.info(`ghc close ${code} ${signal}`));
+
 // ghci stuff //
 
 const ghci = childProcess.spawn(
@@ -111,7 +144,7 @@ ghci.stderr.on('data', (data) =>
   connection.console.warn(data.toString().trimEnd()));
 
 ghci.on('close', (code, signal) =>
-  connection.console.error(`ghci close ${code} ${signal}`));
+  connection.console.error(`ghc close ${code} ${signal}`));
 
 [
   'prompt ""',
