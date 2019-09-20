@@ -13,21 +13,54 @@
   "root": true,
   "rules": {
     "capitalized-comments": "off",
-    "comma-dangle": ["error", "always-multiline"],
-    "dot-location": ["error", "property"],
-    "function-call-argument-newline": ["error", "consistent"],
+    "comma-dangle": [
+      "error",
+      "always-multiline"
+    ],
+    "dot-location": [
+      "error",
+      "property"
+    ],
+    "function-call-argument-newline": [
+      "error",
+      "consistent"
+    ],
     "implicit-arrow-linebreak": "off",
-    "indent": ["error", 2, { "SwitchCase": 1 }],
+    "indent": [
+      "error",
+      2,
+      {
+        "SwitchCase": 1
+      }
+    ],
     "linebreak-style": "off",
-    "multiline-comment-style": ["error", "separate-lines"],
+    "multiline-comment-style": [
+      "error",
+      "separate-lines"
+    ],
     "no-console": "off",
     "no-magic-numbers": "off",
-    "object-curly-spacing": ["error", "always"],
-    "one-var": ["error", "never"],
-    "padded-blocks": ["error", "never"],
+    "object-curly-spacing": [
+      "error",
+      "always"
+    ],
+    "one-var": [
+      "error",
+      "never"
+    ],
+    "padded-blocks": [
+      "error",
+      "never"
+    ],
     "prefer-named-capture-group": "off",
-    "require-unicode-regexp": "off",
-    "quote-props": ["error", "as-needed"],
-    "quotes": ["error", "single"]
+    "quote-props": [
+      "error",
+      "as-needed"
+    ],
+    "quotes": [
+      "error",
+      "single"
+    ],
+    "require-unicode-regexp": "off"
   }
 }

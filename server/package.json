@@ -1,4 +1,5 @@
 {
+  "//": "https://docs.npmjs.com/files/package.json",
   "dependencies": {
     "vscode-languageserver": "^5.2.1"
   },
