@@ -61,7 +61,15 @@ const toDiagnosticSeverity = (severity) => {
   }
 };
 
+const isDeferredTypeError = (diagnostic) =>
+  diagnostic.severity === 'SevWarning' &&
+  diagnostic.reason === 'Opt_WarnDeferredTypeErrors';
+
 const addDiagnostic = (file, diagnostic) => {
+  if (isDeferredTypeError(diagnostic)) {
+    diagnostic.severity = 'SevError';
+    diagnostic.reason = null;
+  }
   files[file].diagnostics[toKey(diagnostic)] = {
     code: diagnostic.reason,
     message: diagnostic.doc,
@@ -115,11 +123,9 @@ extProc.on('close', (code, signal) =>
 const ghci = childProcess.spawn(
   'stack',
   [
-    'exec',
-    '--',
-    'ghc',
-    '--interactive',
-    '-ddump-json',
+    'ghci',
+    '--ghci-options',
+    '-ddump-json -fdefer-type-errors',
   ]
 );
 
