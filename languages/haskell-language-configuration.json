@@ -47,6 +47,12 @@
     ],
     "lineComment": "--"
   },
+  "indentationRules": {
+    "decreaseIndentPattern": "(?!)",
+    "increaseIndentPattern": "\\b(?:else|do|in|let|of|then|where)$",
+    "indentNextLinePattern": "(?!)",
+    "unIndentedLinePattern": "(?!)"
+  },
   "surroundingPairs": [
     [
       "'",
@@ -55,10 +61,6 @@
     [
       "`",
       "`"
-    ],
-    [
-      "\"",
-      "\""
     ],
     [
       "\"",

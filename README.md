@@ -5,7 +5,7 @@ A Haskell IDE for VSCode.
 ## To do
 
 - [x] Highlight soft keywords like `qualified`, `as`, and `hiding`.
-- [ ] Automatically indent after keywords like `do`, `of`, and `where`.
+- [x] Automatically indent after keywords like `do`, `of`, and `where`.
 - [x] Interact with a project-level GHCi.
 - [x] Remove LANGUAGE snippet.
 - [ ] Get autocomplete actually working.
