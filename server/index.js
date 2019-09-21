@@ -1,176 +1,198 @@
 'use strict';
 
-const childProcess = require('child_process');
+// imports //
+
+const { spawn } = require('child_process');
+const { URI } = require('vscode-uri');
 const vscode = require('vscode-languageserver');
 
-const connection = vscode.createConnection();
+// constants //
 
-// This should really use url.fileURLToPath, but VSCode uses Node 10.11.0 and
-// that function was added in 10.12.0.
-// <https://nodejs.org/docs/v10.12.0/api/url.html#url_url_fileurltopath_url>
-const uriToPath = (uri) => decodeURIComponent(uri)
-  .replace(/file:\/\/\/([a-z]):\//i, '$1:/');
+const GHC_SEVERITY_ERROR = 'SevError';
+const GHC_SEVERITY_WARNING = 'SevWarning';
+
+// globals //
+
+const connection = vscode.createConnection();
+const diagnostics = {};
+const documents = {};
+let ghciBuffer = '';
 
 // diagnostic stuff //
 
-const files = {};
-
-const sendDiagnostics = () => {
-  Object.keys(files).forEach((file) => {
-    connection.sendDiagnostics({
-      diagnostics: Object.values(files[file].diagnostics),
-      uri: files[file].uri,
-    });
-  });
+const parseJson = (string) => {
+  try {
+    return JSON.parse(string);
+  } catch (_err) {
+    return null;
+  }
 };
 
-const initializeDiagnostics = (uri) => {
-  files[uriToPath(uri)] = {
-    diagnostics: {},
-    uri,
-  };
-  sendDiagnostics();
-};
+// In order to avoid reporting the same diagnostics multiple times, we have to
+// give each diagnostic a deterministic key. Note that this doesn't include any
+// file information because the diagnostics are already grouped by file.
+const toDiagnosticKey = (json) => [
+  json.span.startLine,
+  json.span.startCol,
+  json.span.endLine,
+  json.span.endCol,
+  json.severity,
+  json.reason,
+].join('-');
 
-const toKey = (diagnostic) => [
-  diagnostic.span.startLine,
-  diagnostic.span.startCol,
-  diagnostic.span.endLine,
-  diagnostic.span.endCol,
-  diagnostic.severity,
-  diagnostic.reason,
-  diagnostic.doc,
-].join(' ');
-
-const toRange = (span) => ({
+const toDiagnosticRange = (json) => ({
   end: {
-    character: span.endCol - 1,
-    line: span.endLine - 1,
+    character: json.span.endCol - 1,
+    line: json.span.endLine - 1,
   },
   start: {
-    character: span.startCol - 1,
-    line: span.startLine - 1,
+    character: json.span.startCol - 1,
+    line: json.span.startLine - 1,
   },
 });
 
-const toDiagnosticSeverity = (severity) => {
-  switch (severity) {
-    case 'SevError': return vscode.DiagnosticSeverity.Error;
-    case 'SevWarning': return vscode.DiagnosticSeverity.Warning;
+const toDiagnosticSeverity = (json) => {
+  // GHC reports deferred errors as warnings, but we want to show them to the
+  // user as errors.
+  if (json.reason.startsWith('Opt_WarnDeferred')) {
+    return vscode.DiagnosticSeverity.Error;
+  }
+
+  switch (json.severity) {
+    case GHC_SEVERITY_ERROR: return vscode.DiagnosticSeverity.Error;
+    case GHC_SEVERITY_WARNING: return vscode.DiagnosticSeverity.Warning;
     default: return vscode.DiagnosticSeverity.Information;
   }
 };
 
-const isDeferredTypeError = (diagnostic) =>
-  diagnostic.severity === 'SevWarning' &&
-  diagnostic.reason === 'Opt_WarnDeferredTypeErrors';
-
-const addDiagnostic = (file, diagnostic) => {
-  if (isDeferredTypeError(diagnostic)) {
-    diagnostic.severity = 'SevError';
-    diagnostic.reason = null;
-  }
-  files[file].diagnostics[toKey(diagnostic)] = {
-    code: diagnostic.reason,
-    message: diagnostic.doc,
-    range: toRange(diagnostic.span),
-    severity: toDiagnosticSeverity(diagnostic.severity),
-    source: 'ghc',
-  };
-  sendDiagnostics();
-};
-
-const clearDiagnostics = (file) => {
-  files[file].diagnostics = {};
-  sendDiagnostics();
-};
-
-// get supported extensions
-
-const extensions = new Set();
-
-const extProc = childProcess.spawn(
-  'stack',
-  [
-    'exec',
-    '--',
-    'ghc',
-    '--supported-extensions',
-  ]
-);
-
-let extBuf = '';
-extProc.stdout.on('data', (data) => {
-  extBuf += data.toString();
-  for (;;) {
-    const index = extBuf.indexOf('\n');
-    if (index === -1) {
-      break;
-    }
-    extensions.add(extBuf.substring(0, index - 1));
-    extBuf = extBuf.substring(index + 1);
-  }
+const toDiagnosticValue = (json) => ({
+  // These codes come from GHC, but they don't match the warning names that
+  // control them. For example, an unused import says `Opt_WarnUnusedImports`
+  // even though the flag is `-Wunused-imports`.
+  code: json.reason,
+  // These messages contain a lot of extra information. Some of it is useful
+  // and should be parsed, like valid hole fits. Some of it is useless and
+  // should be removed, like positional information. Some of it is
+  // questionable, like relevant bindings.
+  message: json.doc,
+  range: toDiagnosticRange(json),
+  severity: toDiagnosticSeverity(json),
+  // It's not clear if the source should be the compiler (`ghc`) or the
+  // extension (`yolk`).
+  source: 'ghc',
 });
 
-extProc.stderr.on('data', (data) =>
-  connection.console.warn(data.toString().trimEnd()));
+const addDiagnostic = (json) => {
+  const file = URI.file(json.span.file);
+  if (!Object.prototype.hasOwnProperty.call(diagnostics, file)) {
+    diagnostics[file] = {};
+  }
+  diagnostics[file][toDiagnosticKey(json)] = toDiagnosticValue(json);
+};
 
-extProc.on('close', (code, signal) =>
-  connection.console.info(`ghc close ${code} ${signal}`));
+const clearDiagnostics = () =>
+  Object.keys(diagnostics).forEach((file) => {
+    // Note that we want to keep the key around rather than deleting it. If we
+    // deleted the key and the file had no new diagnostics, we wouldn't send
+    // anything to the client. That means the client would assume that the old
+    // diagnostics were still valid. We need to send an empty list of
+    // diagnostics for the file instead.
+    diagnostics[file] = {};
+  });
+
+const sendDiagnostics = () =>
+  Object.keys(diagnostics).forEach((file) =>
+    connection.sendDiagnostics({
+      diagnostics: Object.values(diagnostics[file]),
+      uri: file,
+    }));
 
 // ghci stuff //
 
-const ghci = childProcess.spawn(
+const ghci = spawn(
   'stack',
   [
+    // Separate from GHC, Stack tries to colorize its messages. We don't try to
+    // parse Stack's output, so it doesn't really matter. But it's annoying to
+    // see the ANSI escape codes in the debug output.
+    '--color=never',
+    // Explicitly setting the terminal width avoids a warning about `stty`.
+    '--terminal-width=0',
     'ghci',
     '--ghc-options',
-    '-ddump-json -fdefer-type-errors',
+    [
+      // This one is critical. Rather than trying to parse GHC's human-readable
+      // output, we can get it to print out JSON instead. Note that the
+      // messages themselves are still human readable. It's the metadata that
+      // gets turned into structured JSON.
+      '-ddump-json',
+      // Deferring type errors turns them into warnings, which allows more
+      // warnings to be reported when there are type errors.
+      '-fdefer-type-errors',
+      // We're not interested in actually building anything, just type
+      // checking. This has the nice side effect of making things faster.
+      '-fno-code',
+      // Using multiple cores should be faster. Might need to actually
+      // benchmark this, and maybe expose it as an option.
+      '-j',
+    ].join(' '),
   ]
 );
 
-let buffer = '';
-ghci.stdout.on('data', (data) => {
-  buffer += data.toString();
-  const index = buffer.indexOf('\n');
-  if (index !== -1) {
-    const line = buffer.substring(0, index);
-    buffer = buffer.substring(index + 1);
-    try {
-      const json = JSON.parse(line);
-      addDiagnostic(json.span.file, json);
-    } catch (err) {
-      connection.console.warn(line);
-      console.error(err);
+const processGhciBuffer = () => {
+  for (;;) {
+    const index = ghciBuffer.indexOf('\n');
+    if (index === -1) {
+      break;
+    }
+
+    const line = ghciBuffer.substring(0, index);
+    ghciBuffer = ghciBuffer.substring(index + 1);
+
+    const json = parseJson(line);
+    if (json && json.span && json.span.file !== '<interactive>') {
+      addDiagnostic(json);
+    } else {
+      connection.console.info(line);
     }
   }
+};
+
+ghci.stdout.on('data', (data) => {
+  ghciBuffer += data.toString();
+  processGhciBuffer();
+  sendDiagnostics();
 });
 
 ghci.stderr.on('data', (data) =>
   connection.console.warn(data.toString().trimEnd()));
 
-ghci.on('close', (code, signal) =>
-  connection.console.error(`ghc close ${code} ${signal}`));
+ghci.on('close', (code) => {
+  throw new Error(`GHCi closed with code ${code}!`);
+});
+
+const tellGhci = (string) => ghci.stdin.write(`${string}\n`, (err) => {
+  if (err) {
+    throw err;
+  }
+});
 
 [
+  // We are using GHCi as a server by sending messages to it and parsing
+  // responses. Any prompt could be misinterpreted as a message, so we set both
+  // prompts to the empty string.
+  //
+  // It might be a good idea to set the prompt to some sentinel value and use
+  // it to know when a command has completed, but so far that hasn't been
+  // necessary.
   'prompt ""',
   'prompt-cont ""',
+  // This option enables collecting type information, which makes it possible
+  // to use commands like `:type-at`.
   '+c',
-].forEach((option) =>
-  ghci.stdin.write(`:set ${option}\n`, (err) => {
-    if (err) {
-      throw err;
-    }
-  }));
+].forEach((option) => tellGhci(`:set ${option}`));
 
-const loadUri = (uri) =>
-  ghci.stdin.write(`:load ${uriToPath(uri)}\n`, (err) => {
-    if (err) {
-      throw err;
-    }
-  });
-
-// language server stuff //
+// language server //
 
 connection.onInitialize(() => ({
   capabilities: {
@@ -178,45 +200,55 @@ connection.onInitialize(() => ({
       resolveProvider: true,
     },
     textDocumentSync: {
+      // This should really use the incremental syncing strategy. Unfortunately
+      // it's not immediately apparent to me how to actually keep the documents
+      // in sync. I'm sure the VSCode API has something for it, but I couldn't
+      // find it.
+      change: vscode.TextDocumentSyncKind.Full,
       openClose: true,
       save: true,
     },
   },
 }));
 
-connection.onDidOpenTextDocument((params) => {
-  const { uri } = params.textDocument;
-  initializeDiagnostics(uri);
-  loadUri(uri);
+connection.onCompletion((params) => {
+  const token = documents[params.textDocument.uri][params.position.line]
+    .substring(0, params.position.character)
+    .split(/[(),;[\]`{} \t]+/)
+    .pop();
+  tellGhci(`:complete repl 10 "${token}"`);
+  // TODO: Actually get output from GHCi and provide it as a completion.
+  return [];
 });
 
-connection.onDidSaveTextDocument((params) => {
-  const { uri } = params.textDocument;
-  clearDiagnostics(uriToPath(uri));
-  loadUri(uri);
-});
-
-connection.onDidCloseTextDocument((params) =>
-  clearDiagnostics(uriToPath(params.textDocument.uri)));
-
-connection.onCompletion((params, token) => {
-  console.log('onCompletion');
-  console.log(params);
-  console.log(token);
-  return Array.from(extensions).map((extension) => ({ label: extension }));
-});
-
-connection.onCompletionResolve((params, token) => {
+connection.onCompletionResolve((params) => {
   console.log('onCompletionResolve');
-  console.log(params);
-  console.log(token);
+  console.dir(params);
+});
+
+connection.onDidChangeTextDocument((params) => {
+  params.contentChanges.forEach((change) => {
+    documents[params.textDocument.uri] = change.text.split(/\r?\n/);
+  });
+});
+
+connection.onDidCloseTextDocument((params) => {
+  delete documents[params.textDocument.uri];
+});
+
+connection.onDidOpenTextDocument((params) => {
+  documents[params.textDocument.uri] = params.textDocument.text.split(/\r?\n/);
+});
+
+connection.onDidSaveTextDocument(() => {
+  clearDiagnostics();
+  sendDiagnostics();
+  tellGhci(':reload');
 });
 
 connection.listen();
 
-connection.console.error([
-  'Hello from Yolk!',
-  'Nothing is wrong.',
-  'Logging an error message makes VSCode show the output.',
-  'That\'s useful during development.',
-].join(' '));
+// By default VSCode won't show console output unless there's been an error. By
+// logging an error on startup, we can be sure that all console messages are
+// seen. This is only useful for development and should be removed later.
+connection.console.error('Hello from Yolk!');

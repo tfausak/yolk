@@ -1,7 +1,8 @@
 {
   "//": "https://docs.npmjs.com/files/package.json",
   "dependencies": {
-    "vscode-languageserver": "^5.2.1"
+    "vscode-languageserver": "^5.2.1",
+    "vscode-uri": "^2.0.3"
   },
   "devDependencies": {
     "eslint": "^6.4.0"

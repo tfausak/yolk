@@ -34,6 +34,7 @@
       }
     ],
     "linebreak-style": "off",
+    "max-statements": "off",
     "multiline-comment-style": [
       "error",
       "separate-lines"
