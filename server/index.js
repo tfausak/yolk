@@ -124,7 +124,7 @@ const ghci = childProcess.spawn(
   'stack',
   [
     'ghci',
-    '--ghci-options',
+    '--ghc-options',
     '-ddump-json -fdefer-type-errors',
   ]
 );

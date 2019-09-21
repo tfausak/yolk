@@ -78,7 +78,21 @@
       "name": "constant.numeric.haskell"
     },
     "reserved": {
-      "match": "\\b(?:case|class|data|default|deriving|do|else|foreign|if|import|in(?:fix[lr]?|stance)?|let|module|newtype|of|then|type|where|_)\\b",
+      "patterns": [
+        {
+          "include": "#reservedSoft"
+        },
+        {
+          "include": "#reservedHard"
+        }
+      ]
+    },
+    "reservedHard": {
+      "match": "\\b(?:case|class|data|default|deriving|do|else|foreign|if|import|in|infix[lr]?|instance|let|module|newtype|of|then|type|where|_)\\b",
+      "name": "keyword.control.haskell"
+    },
+    "reservedSoft": {
+      "match": "\\b(as|hiding|qualified)\\b",
       "name": "keyword.control.haskell"
     },
     "string": {
