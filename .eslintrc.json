@@ -4,6 +4,7 @@
   },
   "extends": "eslint:all",
   "globals": {
+    "Promise": "readonly",
     "Set": "readonly"
   },
   "parserOptions": {
@@ -12,6 +13,10 @@
   "reportUnusedDisableDirectives": true,
   "root": true,
   "rules": {
+    "array-element-newline": [
+      "error",
+      "consistent"
+    ],
     "capitalized-comments": "off",
     "comma-dangle": [
       "error",
@@ -33,17 +38,33 @@
         "SwitchCase": 1
       }
     ],
+    "line-comment-position": "off",
     "linebreak-style": "off",
+    "max-lines": "off",
     "max-statements": "off",
     "multiline-comment-style": [
       "error",
       "separate-lines"
     ],
+    "newline-per-chained-call": "off",
     "no-console": "off",
+    "no-inline-comments": "off",
     "no-magic-numbers": "off",
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_"
+      }
+    ],
     "object-curly-spacing": [
       "error",
       "always"
+    ],
+    "object-property-newline": [
+      "error",
+      {
+        "allowAllPropertiesOnSameLine": true
+      }
     ],
     "one-var": [
       "error",

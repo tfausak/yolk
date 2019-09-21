@@ -8,22 +8,26 @@ const vscode = require('vscode-languageserver');
 
 // constants //
 
+const DESIRED_COMPLETIONS = 10; // count
+const POLL_INTERVAL = 10; // milliseconds
 const GHC_SEVERITY_ERROR = 'SevError';
 const GHC_SEVERITY_WARNING = 'SevWarning';
+const PROMPT = `{- yolk ${Math.random().toFixed(4).substring(2)} -}`;
 
 // globals //
 
 const connection = vscode.createConnection();
 const diagnostics = {};
 const documents = {};
-let ghciBuffer = '';
+const ghciQueue = [];
+let ghciStdout = '';
 
 // diagnostic stuff //
 
 const parseJson = (string) => {
   try {
     return JSON.parse(string);
-  } catch (_err) {
+  } catch (_error) {
     return null;
   }
 };
@@ -54,7 +58,7 @@ const toDiagnosticRange = (json) => ({
 const toDiagnosticSeverity = (json) => {
   // GHC reports deferred errors as warnings, but we want to show them to the
   // user as errors.
-  if (json.reason.startsWith('Opt_WarnDeferred')) {
+  if (json.reason && json.reason.startsWith('Opt_WarnDeferred')) {
     return vscode.DiagnosticSeverity.Error;
   }
 
@@ -82,6 +86,30 @@ const toDiagnosticValue = (json) => ({
   source: 'ghc',
 });
 
+const parseDiagnostics = (stdout) => {
+  const result = [];
+  let buffer = stdout;
+
+  for (;;) {
+    const index = buffer.indexOf('\n');
+    if (index === -1) {
+      break;
+    }
+
+    const line = buffer.substring(0, index);
+    buffer = buffer.substring(index + 1);
+
+    const json = parseJson(line);
+    if (json && json.span && json.span.file !== '<interactive>') {
+      result.push(json);
+    } else {
+      connection.console.info(line);
+    }
+  }
+
+  return result;
+};
+
 const addDiagnostic = (json) => {
   const file = URI.file(json.span.file);
   if (!Object.prototype.hasOwnProperty.call(diagnostics, file)) {
@@ -106,6 +134,11 @@ const sendDiagnostics = () =>
       diagnostics: Object.values(diagnostics[file]),
       uri: file,
     }));
+
+const handleDiagnostics = (buffer) => {
+  parseDiagnostics(buffer).forEach(addDiagnostic);
+  sendDiagnostics();
+};
 
 // ghci stuff //
 
@@ -139,29 +172,8 @@ const ghci = spawn(
   ]
 );
 
-const processGhciBuffer = () => {
-  for (;;) {
-    const index = ghciBuffer.indexOf('\n');
-    if (index === -1) {
-      break;
-    }
-
-    const line = ghciBuffer.substring(0, index);
-    ghciBuffer = ghciBuffer.substring(index + 1);
-
-    const json = parseJson(line);
-    if (json && json.span && json.span.file !== '<interactive>') {
-      addDiagnostic(json);
-    } else {
-      connection.console.info(line);
-    }
-  }
-};
-
 ghci.stdout.on('data', (data) => {
-  ghciBuffer += data.toString();
-  processGhciBuffer();
-  sendDiagnostics();
+  ghciStdout += data.toString();
 });
 
 ghci.stderr.on('data', (data) =>
@@ -171,26 +183,51 @@ ghci.on('close', (code) => {
   throw new Error(`GHCi closed with code ${code}!`);
 });
 
-const tellGhci = (string) => ghci.stdin.write(`${string}\n`, (err) => {
-  if (err) {
-    throw err;
-  }
-});
+const processJob = (job, callback) =>
+  ghci.stdin.write(`${job.command}\n`, (error) => {
+    if (error) {
+      throw error;
+    }
 
-[
-  // We are using GHCi as a server by sending messages to it and parsing
-  // responses. Any prompt could be misinterpreted as a message, so we set both
-  // prompts to the empty string.
-  //
-  // It might be a good idea to set the prompt to some sentinel value and use
-  // it to know when a command has completed, but so far that hasn't been
-  // necessary.
-  'prompt ""',
-  'prompt-cont ""',
-  // This option enables collecting type information, which makes it possible
-  // to use commands like `:type-at`.
-  '+c',
-].forEach((option) => tellGhci(`:set ${option}`));
+    const poll = () => {
+      const index = ghciStdout.indexOf(PROMPT);
+      if (index === -1) {
+        return setTimeout(poll, POLL_INTERVAL);
+      }
+
+      const buffer = ghciStdout.substring(0, index);
+      ghciStdout = '';
+      job.callback(buffer);
+      return callback();
+    };
+
+    poll();
+  });
+
+const processGhci = () => {
+  const job = ghciQueue.shift();
+
+  if (job) {
+    processJob(job, processGhci);
+  } else {
+    setTimeout(processGhci, POLL_INTERVAL);
+  }
+};
+
+processGhci();
+
+const tellGhci = (command, callback) => ghciQueue.push({ callback, command });
+
+// We are using GHCi as a server by sending messages to it and parsing
+// responses. We are using the prompt to let us know when GHCi has finished
+// processing a message. Therefore setting the prompt must be the very first
+// message we send to GHCi, otherwise it won't be able to detect when
+// processing is finished.
+tellGhci(`:set prompt "${PROMPT}"`, handleDiagnostics);
+
+// This option enables collecting type information, which makes it possible to
+// use commands like `:type-at`.
+tellGhci(':set +c', handleDiagnostics);
 
 // language server //
 
@@ -216,21 +253,36 @@ connection.onCompletion((params) => {
     .substring(0, params.position.character)
     .split(/[(),;[\]`{} \t]+/)
     .pop();
-  tellGhci(`:complete repl 10 "${token}"`);
-  // TODO: Actually get output from GHCi and provide it as a completion.
-  return [];
+  return new Promise((resolve) =>
+    tellGhci(`:complete repl ${DESIRED_COMPLETIONS} "${token}"`, (buffer) => {
+      const [header, ...lines] = buffer.trimEnd().split(/\r?\n/);
+      const [_count, total, rawPrefix] = header.split(' ');
+      const prefix = JSON.parse(rawPrefix);
+      resolve({
+        isIncomplete: total > DESIRED_COMPLETIONS,
+        items: lines.map((line) => ({
+          label: `${prefix}${JSON.parse(line)}`,
+        })),
+      });
+    }));
 });
 
 connection.onCompletionResolve((params) => {
-  console.log('onCompletionResolve');
-  console.dir(params);
+  switch (params.insertTextFormat) {
+    case vscode.InsertTextFormat.PlainText:
+      return new Promise((resolve) =>
+        tellGhci(`:info ${params.label}`, (detail) =>
+          tellGhci(`:doc ${params.label}`, (documentation) =>
+            resolve({ detail, documentation, label: params.label }))));
+    default:
+      return params;
+  }
 });
 
-connection.onDidChangeTextDocument((params) => {
+connection.onDidChangeTextDocument((params) =>
   params.contentChanges.forEach((change) => {
     documents[params.textDocument.uri] = change.text.split(/\r?\n/);
-  });
-});
+  }));
 
 connection.onDidCloseTextDocument((params) => {
   delete documents[params.textDocument.uri];
@@ -243,7 +295,7 @@ connection.onDidOpenTextDocument((params) => {
 connection.onDidSaveTextDocument(() => {
   clearDiagnostics();
   sendDiagnostics();
-  tellGhci(':reload');
+  tellGhci(':reload', handleDiagnostics);
 });
 
 connection.listen();
