@@ -20,6 +20,7 @@ const connection = vscode.createConnection();
 const diagnostics = {};
 const documents = {};
 const ghciQueue = [];
+let ghciStderr = '';
 let ghciStdout = '';
 
 // diagnostic stuff //
@@ -181,8 +182,21 @@ ghci.stdout.on('data', (data) => {
   ghciStdout += data.toString();
 });
 
-ghci.stderr.on('data', (data) =>
-  connection.console.warn(data.toString().trimEnd()));
+ghci.stderr.on('data', (data) => {
+  ghciStderr += data.toString();
+
+  for (;;) {
+    const index = ghciStderr.indexOf('\n');
+    if (index === -1) {
+      break;
+    }
+
+    const line = ghciStderr.substring(0, index);
+    ghciStderr = ghciStderr.substring(index + 1);
+
+    connection.console.warn(line.trimEnd());
+  }
+});
 
 ghci.on('close', (code) => {
   throw new Error(`GHCi closed with code ${code}!`);
