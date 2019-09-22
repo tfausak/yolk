@@ -8,7 +8,8 @@ A Haskell IDE for VSCode.
 - [x] Automatically indent after keywords like `do`, `of`, and `where`.
 - [x] Interact with a project-level GHCi.
 - [x] Remove LANGUAGE snippet.
-- [ ] Get autocomplete actually working.
+- [x] Get autocomplete actually working.
 - [ ] Implement type at cursor.
 - [ ] Figure out how to get live updates without saving.
 - [ ] Figure out how to implement quick fixes.
+- [ ] Get auto complete working for modules, extensions, and options.

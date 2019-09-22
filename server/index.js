@@ -111,7 +111,12 @@ const parseDiagnostics = (stdout) => {
 };
 
 const addDiagnostic = (json) => {
-  const file = URI.file(json.span.file);
+  // For some reason GHC doubles up some (but not all) path separators on
+  // Windows. This may affect other operating systems; I need to check. This
+  // may also be a bug in Stack or something else instead. I should get to the
+  // bottom of it and report a bug.
+  const file = URI.file(json.span.file.replace(/\\\\/g, '\\'));
+
   if (!Object.prototype.hasOwnProperty.call(diagnostics, file)) {
     diagnostics[file] = {};
   }
