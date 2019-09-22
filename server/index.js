@@ -13,6 +13,20 @@ const POLL_INTERVAL = 10; // milliseconds
 const GHC_SEVERITY_ERROR = 'SevError';
 const GHC_SEVERITY_WARNING = 'SevWarning';
 const PROMPT = `{- yolk ${Math.random().toFixed(4).substring(2)} -}`;
+const TOKEN_SEPARATORS = new Set([
+  '',
+  ' ',
+  '\t',
+  ',',
+  ';',
+  '`',
+  '(',
+  ')',
+  '[',
+  ']',
+  '{',
+  '}',
+]);
 
 // globals //
 
@@ -215,7 +229,7 @@ const processJob = (job, callback) =>
       }
 
       const buffer = ghciStdout.substring(0, index);
-      ghciStdout = '';
+      ghciStdout = ghciStdout.substring(index + PROMPT.length);
       job.callback(buffer);
       return callback();
     };
@@ -255,6 +269,7 @@ connection.onInitialize(() => ({
     completionProvider: {
       resolveProvider: true,
     },
+    hoverProvider: true,
     textDocumentSync: {
       // This should really use the incremental syncing strategy. Unfortunately
       // it's not immediately apparent to me how to actually keep the documents
@@ -267,23 +282,59 @@ connection.onInitialize(() => ({
   },
 }));
 
+// It feels like there's probably a better way to get the token at a given
+// position in the file.
+const findToken = (params) => {
+  const document = documents[params.textDocument.uri];
+  if (!document) {
+    return null;
+  }
+
+  const line = document[params.position.line];
+  if (!line) {
+    return null;
+  }
+
+  let left = params.position.character;
+  while (!TOKEN_SEPARATORS.has(line.charAt(left))) {
+    left -= 1;
+  }
+  left += 1;
+
+  let right = params.position.character;
+  while (!TOKEN_SEPARATORS.has(line.charAt(right))) {
+    right += 1;
+  }
+
+  const text = line.substring(left, right);
+  if (!text) {
+    return null;
+  }
+
+  return { left, right, text };
+};
+
 connection.onCompletion((params) => {
-  const token = documents[params.textDocument.uri][params.position.line]
-    .substring(0, params.position.character)
-    .split(/[(),;[\]`{} \t]+/)
-    .pop();
+  const token = findToken(params);
+  if (!token) {
+    return null;
+  }
+
   return new Promise((resolve) =>
-    tellGhci(`:complete repl ${DESIRED_COMPLETIONS} "${token}"`, (buffer) => {
-      const [header, ...lines] = buffer.trimEnd().split(/\r?\n/);
-      const [_count, total, rawPrefix] = header.split(' ');
-      const prefix = JSON.parse(rawPrefix);
-      resolve({
-        isIncomplete: total > DESIRED_COMPLETIONS,
-        items: lines.map((line) => ({
-          label: `${prefix}${JSON.parse(line)}`,
-        })),
-      });
-    }));
+    tellGhci(
+      `:complete repl ${DESIRED_COMPLETIONS} "${token.text}"`,
+      (buffer) => {
+        const [header, ...lines] = buffer.trimEnd().split(/\r?\n/);
+        const [_count, total, rawPrefix] = header.split(' ');
+        const prefix = JSON.parse(rawPrefix);
+        resolve({
+          isIncomplete: total > DESIRED_COMPLETIONS,
+          items: lines.map((line) => ({
+            label: `${prefix}${JSON.parse(line)}`,
+          })),
+        });
+      }
+    ));
 });
 
 connection.onCompletionResolve((params) => {
@@ -315,6 +366,38 @@ connection.onDidSaveTextDocument(() => {
   clearDiagnostics();
   sendDiagnostics();
   tellGhci(':reload', handleDiagnostics);
+});
+
+connection.onHover((params) => {
+  const token = findToken(params);
+  return new Promise((resolve) =>
+    tellGhci(`:info ${token.text}`, (info) =>
+      tellGhci(`:doc ${token.text}`, (doc) =>
+        resolve({
+          contents: {
+            kind: vscode.MarkupKind.Markdown,
+            value: [
+              '``` haskell',
+              info,
+              '```',
+              // This looks pretty bad because it's Haddock interpreted as
+              // Markdown. Unfortunately turning Haddock into Markdown would
+              // require something like Pandoc, which is a little heavyweight.
+              // So for the time being it'll just be ugly.
+              doc,
+            ].join('\n'),
+          },
+          range: {
+            end: {
+              character: token.right,
+              line: params.position.line,
+            },
+            start: {
+              character: token.left,
+              line: params.position.line,
+            },
+          },
+        }))));
 });
 
 connection.listen();
