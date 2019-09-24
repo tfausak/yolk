@@ -49,6 +49,13 @@ const parseJson = (string) => {
   }
 };
 
+const presence = (string) => {
+  if (isBlank(string)) {
+    return null;
+  }
+  return string;
+};
+
 // diagnostic stuff //
 
 // In order to avoid reporting the same diagnostics multiple times, we have to
@@ -346,12 +353,13 @@ connection.onCompletion((params) => {
         const match = header.match(/^\d+ (\d+) (".*")$/);
 
         if (!match) {
-          console.dir(buffer);
+          buffer.split(/\r?\n/).forEach((line) =>
+            connection.console.warn(line));
           return resolve(null);
         }
 
         const prefix = parseJson(match[2]);
-        resolve({
+        return resolve({
           isIncomplete: match[1] > DESIRED_COMPLETIONS,
           items: lines.map((line) => ({
             label: `${prefix}${parseJson(line)}`,
@@ -365,9 +373,13 @@ connection.onCompletionResolve((params) => {
   switch (params.insertTextFormat) {
     case vscode.InsertTextFormat.PlainText:
       return new Promise((resolve) =>
-        tellGhci(`:info ${params.label}`, (detail) =>
-          tellGhci(`:doc ${params.label}`, (documentation) =>
-            resolve({ detail, documentation, label: params.label }))));
+        tellGhci(`:info ${params.label}`, (info) =>
+          tellGhci(`:doc ${params.label}`, (doc) =>
+            resolve({
+              detail: presence(info),
+              documentation: presence(doc),
+              label: params.label,
+            }))));
     default:
       return params;
   }

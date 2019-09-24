@@ -13,3 +13,6 @@ A Haskell IDE for VSCode.
 - [ ] Figure out how to get live updates without saving.
 - [ ] Figure out how to implement quick fixes.
 - [ ] Get auto complete working for modules, extensions, and options.
+- [ ] Get qualified suggestions working.
+- [ ] Figure out how to get information about unexported identifiers in the current module.
+- [ ] Investigate performance of `:set +c` (<https://gitlab.haskell.org/ghc/ghc/issues/12706>).
