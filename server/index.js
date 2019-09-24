@@ -37,7 +37,9 @@ const ghciQueue = [];
 let ghciStderr = '';
 let ghciStdout = '';
 
-// diagnostic stuff //
+// helpers //
+
+const isBlank = (string) => string.trim() === '';
 
 const parseJson = (string) => {
   try {
@@ -46,6 +48,8 @@ const parseJson = (string) => {
     return null;
   }
 };
+
+// diagnostic stuff //
 
 // In order to avoid reporting the same diagnostics multiple times, we have to
 // give each diagnostic a deterministic key. Note that this doesn't include any
@@ -379,21 +383,35 @@ connection.onDidSaveTextDocument(() => {
 connection.onHover((params) => {
   const token = findToken(params);
   return new Promise((resolve) =>
-    tellGhci(`:info ${token.text}`, (info) =>
-      tellGhci(`:doc ${token.text}`, (doc) =>
-        resolve({
+    tellGhci(`:info ${token.text}`, (rawInfo) =>
+      tellGhci(`:doc ${token.text}`, (rawDoc) => {
+        let info = '';
+        if (isBlank(rawInfo) || rawInfo.startsWith('{"span":')) {
+          connection.console.warn(rawInfo.trimEnd());
+        } else {
+          info = ['``` haskell', rawInfo, '```'].join('\n');
+        }
+
+        let doc = '';
+        if (isBlank(rawDoc) || rawDoc.startsWith('{"span":')) {
+          connection.console.warn(rawDoc.trimEnd());
+        } else {
+          // This looks pretty bad because it's Haddock interpreted as
+          // Markdown. Unfortunately turning Haddock into Markdown would
+          // require something like Pandoc, which is a little heavyweight. So
+          // for the time being it'll just be ugly.
+          doc = rawDoc;
+        }
+
+        const value = [info, doc].join('\n');
+        if (!value.trim()) {
+          return resolve(null);
+        }
+
+        return resolve({
           contents: {
             kind: vscode.MarkupKind.Markdown,
-            value: [
-              '``` haskell',
-              info,
-              '```',
-              // This looks pretty bad because it's Haddock interpreted as
-              // Markdown. Unfortunately turning Haddock into Markdown would
-              // require something like Pandoc, which is a little heavyweight.
-              // So for the time being it'll just be ugly.
-              doc,
-            ].join('\n'),
+            value,
           },
           range: {
             end: {
@@ -405,7 +423,8 @@ connection.onHover((params) => {
               line: params.position.line,
             },
           },
-        }))));
+        });
+      })));
 });
 
 connection.listen();
