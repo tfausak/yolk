@@ -327,7 +327,13 @@ const findToken = (params) => {
 };
 
 connection.onCompletion((params) => {
-  const token = findToken(params);
+  const token = findToken({
+    position: {
+      character: params.position.character - 1,
+      line: params.position.line,
+    },
+    textDocument: params.textDocument,
+  });
   if (!token) {
     return null;
   }
@@ -337,12 +343,18 @@ connection.onCompletion((params) => {
       `:complete repl ${DESIRED_COMPLETIONS} "${token.text}"`,
       (buffer) => {
         const [header, ...lines] = buffer.trimEnd().split(/\r?\n/);
-        const [_count, total, rawPrefix] = header.split(' ');
-        const prefix = JSON.parse(rawPrefix);
+        const match = header.match(/^\d+ (\d+) (".*")$/);
+
+        if (!match) {
+          console.dir(buffer);
+          return resolve(null);
+        }
+
+        const prefix = parseJson(match[2]);
         resolve({
-          isIncomplete: total > DESIRED_COMPLETIONS,
+          isIncomplete: match[1] > DESIRED_COMPLETIONS,
           items: lines.map((line) => ({
-            label: `${prefix}${JSON.parse(line)}`,
+            label: `${prefix}${parseJson(line)}`,
           })),
         });
       }
