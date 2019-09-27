@@ -243,8 +243,8 @@ const processJob = (job, callback) =>
       ghciStdout = ghciStdout.substring(index + PROMPT.length);
       job.callback(buffer);
 
-      const end = new Date();
-      const elapsed = end - job.start;
+      job.finishedAt = new Date();
+      const elapsed = job.finishedAt - job.startedAt;
       connection.console.log(`finished ${job.command} in ${elapsed} ms`);
       return callback();
     };
@@ -256,6 +256,9 @@ const processGhci = () => {
   const job = ghciQueue.shift();
 
   if (job) {
+    job.startedAt = new Date();
+    const elapsed = job.startedAt - job.queuedAt;
+    connection.console.log(`starting ${job.command} after ${elapsed} ms`);
     processJob(job, processGhci);
   } else {
     setTimeout(processGhci, POLL_INTERVAL);
@@ -264,11 +267,16 @@ const processGhci = () => {
 
 processGhci();
 
-const tellGhci = (command, callback) => ghciQueue.push({
-  callback,
-  command,
-  start: new Date(),
-});
+const tellGhci = (command, callback) => {
+  connection.console.log(`queueing ${command}`);
+  ghciQueue.push({
+    callback,
+    command,
+    finishedAt: null,
+    queuedAt: new Date(),
+    startedAt: null,
+  });
+};
 
 // We are using GHCi as a server by sending messages to it and parsing
 // responses. We are using the prompt to let us know when GHCi has finished
