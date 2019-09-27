@@ -11,7 +11,7 @@ A Haskell IDE for VSCode.
 - [x] Get autocomplete actually working.
 - [x] Implement type at cursor.
 - [ ] Figure out how to get live updates without saving.
-- [ ] Figure out how to implement quick fixes.
+- [x] Figure out how to implement quick fixes.
 - [ ] Get auto complete working for modules, extensions, and options.
 - [ ] Get qualified suggestions working.
 - [ ] Figure out how to get information about unexported identifiers in the current module.

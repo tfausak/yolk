@@ -293,6 +293,7 @@ tellGhci(':set +c', handleDiagnostics);
 
 connection.onInitialize(() => ({
   capabilities: {
+    codeActionProvider: true,
     completionProvider: {
       resolveProvider: true,
     },
@@ -340,6 +341,41 @@ const findToken = (params) => {
 
   return { left, right, text };
 };
+
+connection.onCodeAction((params) =>
+  params.context.diagnostics.flatMap((diagnostic) => {
+    const lines = diagnostic.message.split(/\r?\n/);
+    const index = lines.indexOf('  Valid hole fits include');
+    if (index === -1) {
+      console.dir(diagnostic, { depth: null });
+      return [];
+    }
+
+    return lines.slice(index + 1).flatMap((line) => {
+      const match = line.match(/^ {4}(\S+) ::/);
+      if (!match) {
+        return [];
+      }
+
+      return [
+        {
+          diagnostics: [diagnostic],
+          edit: {
+            changes: {
+              [params.textDocument.uri]: [
+                {
+                  newText: match[1],
+                  range: params.range,
+                },
+              ],
+            },
+          },
+          kind: vscode.CodeActionKind.QuickFix,
+          title: `Replace with ${match[1]}`,
+        },
+      ];
+    });
+  }));
 
 connection.onCompletion((params) => {
   const token = findToken({
