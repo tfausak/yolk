@@ -4,6 +4,7 @@
 
 const { spawn } = require('child_process');
 const { URI } = require('vscode-uri');
+const url = require('url');
 const vscode = require('vscode-languageserver');
 
 // constants //
@@ -438,6 +439,7 @@ connection.onDidCloseTextDocument((params) => {
 });
 
 connection.onDidOpenTextDocument((params) => {
+  tellGhci(`:load ${url.fileURLToPath(params.textDocument.uri)}`, handleDiagnostics);
   documents[params.textDocument.uri] = params.textDocument.text.split(/\r?\n/);
 });
 
