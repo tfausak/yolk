@@ -10,12 +10,27 @@
   "contributes": {
     "grammars": [
       {
+        "language": "cabal",
+        "path": "grammars/cabal-grammar.json",
+        "scopeName": "source.cabal"
+      },
+      {
         "language": "haskell",
         "path": "grammars/haskell-grammar.json",
         "scopeName": "source.haskell"
       }
     ],
     "languages": [
+      {
+        "aliases": [
+          "Cabal"
+        ],
+        "configuration": "languages/cabal-language-configuration.json",
+        "extensions": [
+          ".cabal"
+        ],
+        "id": "cabal"
+      },
       {
         "aliases": [
           "Haskell"
