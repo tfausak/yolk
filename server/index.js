@@ -496,8 +496,3 @@ connection.onHover((params) => {
 });
 
 connection.listen();
-
-// By default VSCode won't show console output unless there's been an error. By
-// logging an error on startup, we can be sure that all console messages are
-// seen. This is only useful for development and should be removed later.
-connection.console.error('Hello from Yolk!');
