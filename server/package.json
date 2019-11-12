@@ -2,10 +2,10 @@
   "//": "https://docs.npmjs.com/files/package.json",
   "dependencies": {
     "vscode-languageserver": "^5.2.1",
-    "vscode-uri": "^2.0.3"
+    "vscode-uri": "^2.1.1"
   },
   "devDependencies": {
-    "eslint": "^6.4.0"
+    "eslint": "^6.6.0"
   },
   "private": true,
   "scripts": {

@@ -37,7 +37,7 @@
   "description": "A Haskell IDE.",
   "displayName": "Yolk",
   "engines": {
-    "vscode": "^1.38.0"
+    "vscode": "^1.40.0"
   },
   "galleryBanner": {
     "color": "#453A62",
