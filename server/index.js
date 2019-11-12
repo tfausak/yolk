@@ -182,24 +182,23 @@ const ghci = spawn(
     '--color=never',
     // Explicitly setting the terminal width avoids a warning about `stty`.
     '--terminal-width=0',
+    'exec',
+    '--',
     'ghci',
-    '--ghc-options',
-    [
-      // This one is critical. Rather than trying to parse GHC's human-readable
-      // output, we can get it to print out JSON instead. Note that the
-      // messages themselves are still human readable. It's the metadata that
-      // gets turned into structured JSON.
-      '-ddump-json',
-      // Deferring type errors turns them into warnings, which allows more
-      // warnings to be reported when there are type errors.
-      '-fdefer-type-errors',
-      // We're not interested in actually building anything, just type
-      // checking. This has the nice side effect of making things faster.
-      '-fno-code',
-      // Using multiple cores should be faster. Might need to actually
-      // benchmark this, and maybe expose it as an option.
-      '-j',
-    ].join(' '),
+    // This one is critical. Rather than trying to parse GHC's human-readable
+    // output, we can get it to print out JSON instead. Note that the
+    // messages themselves are still human readable. It's the metadata that
+    // gets turned into structured JSON.
+    '-ddump-json',
+    // Deferring type errors turns them into warnings, which allows more
+    // warnings to be reported when there are type errors.
+    '-fdefer-type-errors',
+    // We're not interested in actually building anything, just type
+    // checking. This has the nice side effect of making things faster.
+    '-fno-code',
+    // Using multiple cores should be faster. Might need to actually
+    // benchmark this, and maybe expose it as an option.
+    '-j',
   ]
 );
 
